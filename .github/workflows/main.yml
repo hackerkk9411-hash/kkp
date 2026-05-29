@@ -1,0 +1,45 @@
+name: Generate M3U
+
+on:
+  workflow_dispatch: # Isse aap button daba kar script chala sakenge
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Generate M3U
+        env:
+          URL: "http://ysift55.xyz:80"
+          USER: "WJ74AC4SRKQQYR7"
+          PASS: "pahruAQRs8"
+        run: |
+          python -c "
+          import requests, os
+          url = os.environ['URL']
+          u = os.environ['USER']
+          p = os.environ['PASS']
+          resp = requests.get(f'{url}/player_api.php?username={u}&password={p}&action=get_live_categories').json()
+          with open('playlist.m3u', 'w', encoding='utf-8') as f:
+              f.write('#EXTM3U\n')
+              for cat in resp:
+                  c_id = cat['category_id']
+                  c_name = cat['category_name']
+                  streams = requests.get(f'{url}/player_api.php?username={u}&password={p}&action=get_live_streams&category_id={c_id}').json()
+                  for s in streams:
+                      f.write(f'#EXTINF:-1 group-title=\"{c_name}\",{s[\"name\"]}\n')
+                      f.write(f'{url}/live/{u}/{p}/{s[\"stream_id\"]}.ts\n')
+          "
+
+      - name: Upload M3U
+        uses: actions/upload-artifact@v3
+        with:
+          name: playlist
+          path: playlist.m3u
